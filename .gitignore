@@ -161,3 +161,6 @@ cython_debug/
 
 test
 poses
+
+poses/fisheye_images
+poses/panorama_images
