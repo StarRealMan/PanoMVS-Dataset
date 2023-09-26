@@ -4,5 +4,5 @@ Generating 4 way fisheye images and cooresponding multi-view panoramas (color an
 
 ## Attempts
 
-1. Using Blender and Shapenet models.
-2. Using cubemap rendered from [NVISII](https://github.com/owl-project/NVISII)
+- [ ] Using Blender and Shapenet models.
+- [x] Using cubemap rendered from [NVISII](https://github.com/owl-project/NVISII)

@@ -12,12 +12,14 @@ def load_poses(poses_path):
     fisheye_path = os.path.join(poses_path, "fisheye_poses")
     fisheye_poses = []
     for fisheye_file in os.listdir(fisheye_path):
+        fisheye_file = os.path.join(fisheye_path, fisheye_file)
         fisheye_pose = np.loadtxt(fisheye_file)
         fisheye_poses.append(fisheye_pose)
         
-    panorama_path = os.path.join(poses_path, "fisheye_poses")
+    panorama_path = os.path.join(poses_path, "panorama_poses")
     panorama_poses = []
     for panorama_file in os.listdir(panorama_path):
+        panorama_file = os.path.join(panorama_path, panorama_file)
         panorama_pose = np.loadtxt(panorama_file)
         panorama_poses.append(panorama_pose)
     
@@ -61,6 +63,7 @@ def load_dome_text(text_path):
     for path in os.listdir(text_path):
         path = os.path.join(text_path, path)
         dome_list.append(path)
+    return dome_list
 
 def load_shapnet_scenes(shapenet_path):
     scene_list = []
@@ -78,7 +81,7 @@ def add_rand_shapenet_scene(file = "file"):
     position = (
         uniform(-5,5), 
         uniform(-5,5), 
-        uniform(-1,3)
+        uniform(--5,5)
     )
     
     rotation = (
@@ -92,7 +95,7 @@ def add_rand_shapenet_scene(file = "file"):
     scale = (s, s, s)
     
     sdb = nvisii.import_scene(
-        filepath = file, 
+        file_path = file, 
         position = position, 
         scale = scale, 
         rotation = rotation, 
@@ -114,7 +117,7 @@ def add_rand_nvisii_obj(name = "name"):
     obj.get_transform().set_position((
         uniform(-5,5), 
         uniform(-5,5), 
-        uniform(-1,3)
+        uniform(-5,5)
     ))
 
     obj.get_transform().set_rotation((
@@ -182,9 +185,9 @@ def set_scene(dome_path, shapenet_path, obj_size, scene_size):
     nvisii.mesh.create_tube('m_15')
 
     dome_list = load_dome_text(dome_path)
-    dome_file = choices(dome_list)
+    dome_file = choices(dome_list)[0]
     dome = nvisii.texture.create_from_file("dome", dome_file)
-    nvisii.set_dome_light_intensity(.8)
+    nvisii.set_dome_light_intensity(args.dome_density)
     nvisii.set_dome_light_texture(dome)
     
     for obj_num in range(obj_size):
@@ -192,8 +195,8 @@ def set_scene(dome_path, shapenet_path, obj_size, scene_size):
     
     scene_list = load_shapnet_scenes(shapenet_path)
     rand_scenes = choices(scene_list, k=scene_size)
-    for scene_num, scene_file in enumerate(rand_scenes):
-        add_rand_shapenet_scene(str(scene_num), scene_file)
+    for scene_file in rand_scenes:
+        add_rand_shapenet_scene(scene_file)
 
 def set_camera():
     camera = nvisii.entity.create(name = "camera")
@@ -222,25 +225,25 @@ transform_dict = {
                        [0.0, 1.0, 0.0, 0.0], 
                        [0.0, 0.0, 1.0, 0.0], 
                        [0.0, 0.0, 0.0, 1.0]]), 
-    "left": np.array([[1.0, 0.0, 0.0, 0.0], 
+    "left": np.array([[0.0, 0.0, -1.0, 0.0], 
                       [0.0, 1.0, 0.0, 0.0], 
-                      [0.0, 0.0, 1.0, 0.0], 
+                      [1.0, 0.0, 0.0, 0.0], 
                       [0.0, 0.0, 0.0, 1.0]]), 
-    "right": np.array([[1.0, 0.0, 0.0, 0.0], 
+    "right": np.array([[0.0, 0.0, 1.0, 0.0], 
                        [0.0, 1.0, 0.0, 0.0], 
-                       [0.0, 0.0, 1.0, 0.0], 
+                       [-1.0, 0.0, 0.0, 0.0], 
                        [0.0, 0.0, 0.0, 1.0]]), 
     "up": np.array([[1.0, 0.0, 0.0, 0.0], 
-                    [0.0, 1.0, 0.0, 0.0], 
-                    [0.0, 0.0, 1.0, 0.0], 
-                    [0.0, 0.0, 0.0, 1.0]]), 
+                    [0.0, 0.0, -1.0, 0.0], 
+                    [0.0, 0.0, 0.0, 0.0], 
+                    [0.0, 1.0, 0.0, 1.0]]), 
     "down": np.array([[1.0, 0.0, 0.0, 0.0], 
-                      [0.0, 1.0, 0.0, 0.0], 
                       [0.0, 0.0, 1.0, 0.0], 
+                      [0.0, -1.0, 0.0, 0.0], 
                       [0.0, 0.0, 0.0, 1.0]]), 
-    "back": np.array([[1.0, 0.0, 0.0, 0.0], 
+    "back": np.array([[-1.0, 0.0, 0.0, 0.0], 
                       [0.0, 1.0, 0.0, 0.0], 
-                      [0.0, 0.0, 1.0, 0.0], 
+                      [0.0, 0.0, -1.0, 0.0], 
                       [0.0, 0.0, 0.0, 1.0]])
 }
 
@@ -257,7 +260,7 @@ def render_cubemap(path, camera, T, reso, spp):
         )
 
 def main(args):
-    fisheye_poses, panorama_poses = load_poses()
+    fisheye_poses, panorama_poses = load_poses(args.poses_path)
     
     for num in range(args.size):
         nvisii.initialize(headless = True, verbose = True)
@@ -266,26 +269,26 @@ def main(args):
         camera = set_camera()
         set_scene(args.dome_path, args.shapenet_path, 10, 10)
 
-        panorama_path = os.path.join(args.workspace_path, str(num), "panorama")
         fisheye_path = os.path.join(args.workspace_path, str(num), "fisheye")
+        panorama_path = os.path.join(args.workspace_path, str(num), "panorama")
         
-        if os.path.exists(panorama_path):
-            os.makedirs(panorama_path)
-        if os.path.exists(fisheye_path):
+        if not os.path.exists(fisheye_path):
             os.makedirs(fisheye_path)
+        if not os.path.exists(panorama_path):
+            os.makedirs(panorama_path)
         
-        for panorama_num in range(args.panorama_size):
-            path = os.path.join(panorama_path, str(panorama_num))
-            if os.path.exists(path):
-                os.makedirs(path)
-            T = panorama_poses[panorama_num]
-            render_cubemap(path, camera, T, args.reso, args.spp)
-            
         for fisheye_num in range(4):
-            path = os.path.join(panorama_path, str(fisheye_num))
-            if os.path.exists(path):
+            path = os.path.join(fisheye_path, str(fisheye_num))
+            if not os.path.exists(path):
                 os.makedirs(path)
             T = fisheye_poses[fisheye_num]
+            render_cubemap(path, camera, T, args.reso, args.spp)
+            
+        for panorama_num in range(args.panorama_size):
+            path = os.path.join(panorama_path, str(panorama_num))
+            if not os.path.exists(path):
+                os.makedirs(path)
+            T = panorama_poses[panorama_num]
             render_cubemap(path, camera, T, args.reso, args.spp)
 
         nvisii.deinitialize()
@@ -300,6 +303,7 @@ if __name__ == "__main__":
     parser.add_argument('--panorama_size', type=int, default=48)
     parser.add_argument('--reso', type = int, default = 800)
     parser.add_argument('--spp', type = int, default = 64)
+    parser.add_argument('--dome_density', type = float, default = 0.8)
     
     args = parser.parse_args()
     
