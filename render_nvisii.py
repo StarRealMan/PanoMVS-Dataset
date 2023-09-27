@@ -252,11 +252,22 @@ def render_cubemap(path, camera, T, reso, spp):
         set_cam_pose(camera, matrix.dot(T))
         if not os.path.exists(path):
             os.makedirs(path)
+        
         nvisii.render_to_file(
             width = reso, 
             height = reso, 
             samples_per_pixel = spp, 
             file_path = os.path.join(path, transform+".png")
+        )
+        
+        nvisii.render_data_to_file(
+            width = reso, 
+            height = reso, 
+            start_frame=0,
+            frame_count=1,
+            bounce=int(0),
+            options="depth",
+            file_path = os.path.join(path, transform+".exr")
         )
 
 def main(args):
