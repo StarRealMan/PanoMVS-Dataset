@@ -6,6 +6,7 @@ import argparse
 import random
 import quaternion as qt
 import json
+from tqdm import tqdm
 
 import habitat_sim
 import habitat_sim.agent
@@ -121,7 +122,7 @@ parser.add_argument("--scene", type=str, default="room_0")
 
 args = parser.parse_args()
 
-data_path = "/home/star/Dataset/replica"
+data_path = "/home/star/Dataset/Replica/replica"
 scene = args.scene
 
 with open(os.path.join(data_path, scene, 'habitat', 'info_semantic.json'), 'r') as f:
@@ -143,9 +144,9 @@ simulator = habitat_sim.Simulator(cfg)
 print(simulator._sensors['color_sensor']._sensor_object.hfov)
 agent = simulator.get_agent(0)
 observations = simulator.get_sensor_observations()
-cv2.imshow("rgb", observations["color_sensor"])
+cv2.imshow("rgb", cv2.cvtColor(observations["color_sensor"], cv2.COLOR_BGR2RGB))
 
-output_dir = "/home/star/Dataset/replica_generated"
+output_dir = "/home/star/Dataset/Replica/replica_generated_msp"
 output_path = os.path.join(output_dir, scene)
 
 eqr_path = os.path.join(output_path, "eqr")
@@ -198,7 +199,7 @@ while True:
 
     agent_state = agent.get_state()
     sensor_state = agent_state.sensor_states["color_sensor"]
-    agent_pose.append((agent_state.position, agent_state.rotation))
+    agent_pose.append((sensor_state.position, sensor_state.rotation))
     index += 1
 
     print("Position is {}, rotation is {}".format(sensor_state.position, sensor_state.rotation))
@@ -222,15 +223,20 @@ cube_rots = [qt.from_rotation_matrix(np.array([[1,0,0],[0,1,0],[0,0,1]])),
              qt.from_rotation_matrix(np.array([[0,0,-1],[0,1,0],[1,0,0]])), 
              qt.from_rotation_matrix(np.array([[1,0,0],[0,0,-1],[0,1,0]])), 
              qt.from_rotation_matrix(np.array([[1,0,0],[0,0,1],[0,-1,0]])), 
-             qt.from_rotation_matrix(np.array([[-1,0,0],[0,1,0],[0,0,-1]])), 
-             ]
+             qt.from_rotation_matrix(np.array([[-1,0,0],[0,1,0],[0,0,-1]]))]
 
 def pose2np(trans, quat):
-    pose = np.eye(4)
-    pose[:3, 3] = trans
-    pose[:3, :3] = qt.as_rotation_matrix(quat)
+    np_pose = np.eye(4)
+    np_pose[:3, 3] = trans
+    np_pose[:3, :3] = qt.as_rotation_matrix(quat)
     
-    return pose
+    return np_pose
+
+def np2pose(np_pose):
+    trans = np_pose[:3, 3]
+    quat = qt.from_rotation_matrix(np_pose[:3, :3])
+    
+    return trans, quat
 
 def render_cube_map(path, pose):
     trans, quat = pose
@@ -240,9 +246,9 @@ def render_cube_map(path, pose):
         rgb = render_agent_pose((trans, cube_world_rot))
         
         rgb_name = os.path.join(path, cube_name + ".png")
-        print(rgb_name)
         cv2.imwrite(rgb_name, rgb)
     
+    # camera to world pose
     pose = pose2np(trans, quat)
     pose_name = os.path.join(path, "xyz.txt")
     np.savetxt(pose_name, pose)
@@ -297,9 +303,28 @@ def render_target_eqr(index, pose):
 
         render_cube_map(num_path, (rand_trans, rand_quat))
 
-def render_fisheye(index, pose):
-    pass
+fisheye_poses = [np.array([[1,0,0,0],[0,1,0,0],[0,0,1,rig_size],[0,0,0,1]]), 
+                 np.array([[0,0,-1,-rig_size],[0,1,0,0,],[1,0,0,0],[0,0,0,1]]), 
+                 np.array([[-1,0,0,0],[0,1,0,0],[0,0,-1,-rig_size],[0,0,0,1]]), 
+                 np.array([[0,0,1,rig_size],[0,1,0,0],[-1,0,0,0],[0,0,0,1]])]
 
-for num, pose in enumerate(agent_pose):
+def render_fisheye(index, pose):
+    trans, quat = pose
+    path = os.path.join(fisheye_path, str(index))
+    if not os.path.exists(path):
+        os.makedirs(path)
+    
+    for num, fisheye_pose in enumerate(fisheye_poses):
+        num_path = os.path.join(path, str(num))
+        if not os.path.exists(num_path):
+            os.makedirs(num_path)
+        
+        pose = pose2np(trans, quat)
+        fisheye_pose = pose.dot(fisheye_pose)
+        fisheye_trans, fisheye_quat = np2pose(fisheye_pose)
+        
+        render_cube_map(num_path, (fisheye_trans, fisheye_quat))
+
+for num, pose in enumerate(tqdm(agent_pose)):
     render_target_eqr(num, pose)
     render_fisheye(num, pose)
