@@ -203,6 +203,7 @@ while True:
     index += 1
 
     print("Position is {}, rotation is {}".format(sensor_state.position, sensor_state.rotation))
+    print("This is No.{} image captured".format(index))
 
 def render_agent_pose(pose):
     trans, quat = pose
