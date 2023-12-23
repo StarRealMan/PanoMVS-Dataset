@@ -303,10 +303,10 @@ def render_target_eqr(index, pose):
 
         render_cube_map(num_path, (rand_trans, rand_quat))
 
-fisheye_poses = [np.array([[1,0,0,0],[0,1,0,0],[0,0,1,rig_size],[0,0,0,1]]), 
-                 np.array([[0,0,-1,-rig_size],[0,1,0,0,],[1,0,0,0],[0,0,0,1]]), 
-                 np.array([[-1,0,0,0],[0,1,0,0],[0,0,-1,-rig_size],[0,0,0,1]]), 
-                 np.array([[0,0,1,rig_size],[0,1,0,0],[-1,0,0,0],[0,0,0,1]])]
+fisheye_poses = [np.array([[1,0,0,0],[0,1,0,0],[0,0,1,-rig_size],[0,0,0,1]]), 
+                 np.array([[0,0,-1,rig_size],[0,1,0,0,],[1,0,0,0],[0,0,0,1]]), 
+                 np.array([[-1,0,0,0],[0,1,0,0],[0,0,-1,rig_size],[0,0,0,1]]), 
+                 np.array([[0,0,1,-rig_size],[0,1,0,0],[-1,0,0,0],[0,0,0,1]])]
 
 def render_fisheye(index, pose):
     trans, quat = pose
