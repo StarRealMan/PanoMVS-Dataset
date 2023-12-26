@@ -5,24 +5,22 @@ import numpy as np
 from tqdm import tqdm
 import c2e
 
-
 def cube_h2list(cube_h):
     assert cube_h.shape[0] * 6 == cube_h.shape[1]
     return np.split(cube_h, 6, axis=1)
-
 
 def cube_list2h(cube_list):
     assert len(cube_list) == 6
     assert sum(face.shape == cube_list[0].shape for face in cube_list) == 6
     return np.concatenate(cube_list, axis=1)
 
-def gen_360(scene_name, data_type):
-    if not os.path.exists('/home/star/Dataset/Replica/replica_generated_msp/' + scene_name):
+def gen_360(scene_name, data_type, msp_base_path, fe_pase_path, res_path):
+    if not os.path.exists(msp_base_path + scene_name):
         return
     
     if data_type == "fisheye":
-        cube_path = '/home/star/Dataset/Replica/replica_generated_msp/' + scene_name + '/fisheye'
-        eqr_path = '/home/star/Dataset/Replica/replica_generated_fe/' + scene_name
+        cube_path = msp_base_path + scene_name + '/fisheye'
+        eqr_path = fe_pase_path + scene_name
         views = ["cam1", "cam2", "cam3", "cam4"]
         for view in views:
             view_image_path = os.path.join(eqr_path, view, "image")
@@ -33,8 +31,8 @@ def gen_360(scene_name, data_type):
                 os.makedirs(view_pose_path)
         
     elif data_type == "eqr":
-        cube_path = '/home/star/Dataset/Replica/replica_generated_msp/' + scene_name + '/eqr'
-        eqr_path = '/home/star/Dataset/Replica_360/' + scene_name + '/eqr'
+        cube_path = msp_base_path + scene_name + '/eqr'
+        eqr_path = res_path + scene_name + '/eqr'
         views = [str(i+1) for i in range(target_size)]
         for view in views:
             view_image_path = os.path.join(eqr_path, view, "image")
@@ -89,6 +87,9 @@ if __name__ == '__main__':
     eqr_size = 512
     eqr_mode = 'bilinear'
     cube_format = 'dice'
+    msp_base_path = '/home/star/Dataset/Replica/replica_generated_msp/'
+    fe_base_path = '/home/star/Dataset/Replica/replica_generated_fe/'
+    res_path = '/home/star/Dataset/Replica_360/'
 
     for scene_name in ["apartment_0", "apartment_1", "apartment_2", 
                        "frl_apartment_0", "frl_apartment_1", "frl_apartment_2", "frl_apartment_3", 
@@ -96,5 +97,5 @@ if __name__ == '__main__':
                        "office_0", "office_1", "office_2", "office_3", "office_4", 
                        "room_0", "room_1", "room_2"]:
         for data_type in ["fisheye", "eqr"]:
-            gen_360(scene_name, data_type)
+            gen_360(scene_name, data_type, msp_base_path, fe_base_path, res_path)
         

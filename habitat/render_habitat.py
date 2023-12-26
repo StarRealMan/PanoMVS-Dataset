@@ -14,15 +14,6 @@ import habitat_sim.bindings as hab_bind
 
 from habitat_sim.agent import AgentState
 
-FORWARD_KEY = 'w'
-LEFT_KEY="a"
-RIGHT_KEY="d"
-BACKWARD_KEY="s"
-UP_KEY="u"
-DOWN_KEY="i"
-
-FINISH="f"
-
 def make_cfg(settings):
     sim_cfg = hab_bind.SimulatorConfiguration()
     sim_cfg.scene_id = settings["scene"]
@@ -34,8 +25,7 @@ def make_cfg(settings):
             "position": [0.0, settings["sensor_height"], 0.0],
         }
     }
-
-
+    
     # Creat sensor
     sensor_specs = []
     for sensor_uuid, sensor_params in sensors.items():
@@ -111,99 +101,6 @@ def id_to_lable(semantic_observation, scene_dict):
             semantic_observation[semantic_observation==id] = scene_dict['id_to_label'][id]
 
     return semantic_observation
-
-def load_pose(pose_file):
-    position = np.array()
-    rotation = qt.quaternion()
-    return position, rotation
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--scene", type=str, default="room_0")
-
-args = parser.parse_args()
-
-data_path = "/home/star/Dataset/Replica/replica"
-scene = args.scene
-
-with open(os.path.join(data_path, scene, 'habitat', 'info_semantic.json'), 'r') as f:
-    state_dict = json.load(f)
-
-settings = {}
-
-# set simulator parameters
-settings['width'] = 800
-settings['height'] = 800
-settings['sensor_height'] = 0.0
-settings['color_sensor'] = True
-settings['silent'] = True
-settings['scene'] = os.path.join(data_path, scene, "habitat", "mesh_semantic.ply")
-
-cfg = make_cfg(settings)
-simulator = habitat_sim.Simulator(cfg)
-
-print(simulator._sensors['color_sensor']._sensor_object.hfov)
-agent = simulator.get_agent(0)
-observations = simulator.get_sensor_observations()
-cv2.imshow("rgb", cv2.cvtColor(observations["color_sensor"], cv2.COLOR_BGR2RGB))
-
-output_dir = "/home/star/Dataset/Replica/replica_generated_msp"
-output_path = os.path.join(output_dir, scene)
-
-eqr_path = os.path.join(output_path, "eqr")
-fisheye_path = os.path.join(output_path, "fisheye")
-os.makedirs(eqr_path, exist_ok=True)
-os.makedirs(fisheye_path, exist_ok=True)
-
-index = 0
-agent_pose = []
-while True:
-    key = cv2.waitKey(0)
-    if key == ord(FORWARD_KEY):
-        observations = simulator.step("move_forward")
-        print("move forward")
-    elif key == ord(LEFT_KEY):
-        observations = simulator.step("move_left")
-        print("move_left")
-    elif key == ord(RIGHT_KEY):
-        observations = simulator.step("move_right")
-        print("move_right")
-    elif key == ord(BACKWARD_KEY):
-        observations = simulator.step("move_backward")
-        print("move backward")
-    elif key == ord(UP_KEY):
-        observations = simulator.step("move_up")
-        print("move up")
-    elif key == ord(DOWN_KEY):
-        observations = simulator.step("move_down")
-        print("move down")
-    elif key == 82:
-        observations = simulator.step("look_up")
-        print("look up")
-    elif key == 84:
-        observations = simulator.step("look_down")
-        print("look down")
-    elif key == 81:
-        observations = simulator.step("turn_left")
-        print("turn left")
-    elif key == 83:
-        observations = simulator.step("turn_right")
-        print("turn right")
-    elif key == 27:
-        break
-    else:
-        continue
-
-    rgb = observations["color_sensor"]
-    rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
-    cv2.imshow("rgb", rgb)
-
-    agent_state = agent.get_state()
-    sensor_state = agent_state.sensor_states["color_sensor"]
-    agent_pose.append((sensor_state.position, sensor_state.rotation))
-    index += 1
-
-    print("Position is {}, rotation is {}".format(sensor_state.position, sensor_state.rotation))
-    print("This is No.{} image captured".format(index))
 
 def render_agent_pose(pose):
     trans, quat = pose
@@ -326,6 +223,103 @@ def render_fisheye(index, pose):
         
         render_cube_map(num_path, (fisheye_trans, fisheye_quat))
 
-for num, pose in enumerate(tqdm(agent_pose)):
-    render_target_eqr(num, pose)
-    render_fisheye(num, pose)
+if __name__ == "__main__":
+    data_path = "/home/star/Dataset/Replica/replica"
+    output_dir = "/home/star/Dataset/Replica/replica_generated_msp"
+    
+    FORWARD_KEY = 'w'
+    LEFT_KEY="a"
+    RIGHT_KEY="d"
+    BACKWARD_KEY="s"
+    UP_KEY="u"
+    DOWN_KEY="i"
+
+    FINISH="f"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scene", type=str, default="room_0")
+
+    args = parser.parse_args()
+    scene = args.scene
+
+    with open(os.path.join(data_path, scene, 'habitat', 'info_semantic.json'), 'r') as f:
+        state_dict = json.load(f)
+
+    settings = {}
+
+    # set simulator parameters
+    settings['width'] = 800
+    settings['height'] = 800
+    settings['sensor_height'] = 0.0
+    settings['color_sensor'] = True
+    settings['silent'] = True
+    settings['scene'] = os.path.join(data_path, scene, "habitat", "mesh_semantic.ply")
+
+    cfg = make_cfg(settings)
+    simulator = habitat_sim.Simulator(cfg)
+
+    print(simulator._sensors['color_sensor']._sensor_object.hfov)
+    agent = simulator.get_agent(0)
+    observations = simulator.get_sensor_observations()
+    cv2.imshow("rgb", cv2.cvtColor(observations["color_sensor"], cv2.COLOR_BGR2RGB))
+
+    output_path = os.path.join(output_dir, scene)
+
+    eqr_path = os.path.join(output_path, "eqr")
+    fisheye_path = os.path.join(output_path, "fisheye")
+    os.makedirs(eqr_path, exist_ok=True)
+    os.makedirs(fisheye_path, exist_ok=True)
+
+    index = 0
+    agent_pose = []
+    while True:
+        key = cv2.waitKey(0)
+        if key == ord(FORWARD_KEY):
+            observations = simulator.step("move_forward")
+            print("move forward")
+        elif key == ord(LEFT_KEY):
+            observations = simulator.step("move_left")
+            print("move_left")
+        elif key == ord(RIGHT_KEY):
+            observations = simulator.step("move_right")
+            print("move_right")
+        elif key == ord(BACKWARD_KEY):
+            observations = simulator.step("move_backward")
+            print("move backward")
+        elif key == ord(UP_KEY):
+            observations = simulator.step("move_up")
+            print("move up")
+        elif key == ord(DOWN_KEY):
+            observations = simulator.step("move_down")
+            print("move down")
+        elif key == 82:
+            observations = simulator.step("look_up")
+            print("look up")
+        elif key == 84:
+            observations = simulator.step("look_down")
+            print("look down")
+        elif key == 81:
+            observations = simulator.step("turn_left")
+            print("turn left")
+        elif key == 83:
+            observations = simulator.step("turn_right")
+            print("turn right")
+        elif key == 27:
+            break
+        else:
+            continue
+
+        rgb = observations["color_sensor"]
+        rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
+        cv2.imshow("rgb", rgb)
+
+        agent_state = agent.get_state()
+        sensor_state = agent_state.sensor_states["color_sensor"]
+        agent_pose.append((sensor_state.position, sensor_state.rotation))
+        index += 1
+
+        print("Position is {}, rotation is {}".format(sensor_state.position, sensor_state.rotation))
+        print("This is No.{} image captured".format(index))
+            
+    for num, pose in enumerate(tqdm(agent_pose)):
+        render_target_eqr(num, pose)
+        render_fisheye(num, pose)
