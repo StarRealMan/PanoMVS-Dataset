@@ -63,10 +63,7 @@ def load_cam_intrinsic(param_path, fov):
 
     return ocams
 
-def gen_fisheye(scene_name, msp_base_path, fe_base_path, res_path):
-    if not os.path.exists(msp_base_path + scene_name):
-        return
-        
+def gen_fisheye(scene_name, fe_base_path, res_path):
     eqr_path = fe_base_path + scene_name
     fisheye_path = res_path + scene_name + '/fisheye'
     
@@ -112,14 +109,11 @@ if __name__ == '__main__':
     fov = 220
     device = 'cuda:0'
     param_path = './ocam'
-    msp_base_path = '/home/star/Dataset/Replica/replica_generated_msp/'
-    fe_base_path = '/home/star/Dataset/Replica/replica_generated_fe/'
-    res_path = '/home/star/Dataset/Replica_360/'
+    fe_base_path = '/home/star/Dataset/Replica/replica_generated_fe_simplified/'
+    res_path = '/home/star/Dataset/Replica_360_simplified/'
     
-    for scene_name in ["apartment_0", "apartment_1", "apartment_2", 
-                       "frl_apartment_0", "frl_apartment_1", "frl_apartment_2", "frl_apartment_3", 
-                       "frl_apartment_4", "frl_apartment_5", "hotel_0", 
+    for scene_name in ["apartment_0", "apartment_1", "apartment_2", "hotel_0", 
                        "office_0", "office_1", "office_2", "office_3", "office_4", 
                        "room_0", "room_1", "room_2"]:
-        gen_fisheye(scene_name, msp_base_path, fe_base_path, res_path)
+        gen_fisheye(scene_name, fe_base_path, res_path)
         

@@ -151,56 +151,32 @@ def render_cube_map(path, pose):
     pose_name = os.path.join(path, "xyz.txt")
     np.savetxt(pose_name, pose)
 
-inner_size = 2
-outer_size = 2
 rig_size = 0.2
-
 def render_target_eqr(index, pose):
-    trans, _ = pose
+    trans, quat = pose
     path = os.path.join(eqr_path, str(index))
     if not os.path.exists(path):
         os.makedirs(path)
     
-    for num in range(inner_size):
-        num_path = os.path.join(path, str(num))
-        if not os.path.exists(num_path):
-            os.makedirs(num_path)
-        
-        theta = 2 * np.pi * random.random()
-        phi = np.arccos(2 * random.random() - 1)
-        r = rig_size * random.random()
+    theta = 2 * np.pi * random.random()
+    phi = np.arccos(2 * random.random() - 1)
+    r = 2 * rig_size * random.random()
 
-        rand_trans = np.zeros(3)
-        rand_trans[0] = r * np.sin(phi) * np.cos(theta) + trans[0]
-        rand_trans[1] = r * np.sin(phi) * np.sin(theta) + trans[1]
-        rand_trans[2] = r * np.cos(phi) + trans[2]
-        
-        rand_quat = qt.from_euler_angles(
-            random.random() * 2 * np.pi, random.random() * 2 *  np.pi, random.random() * 2 *  np.pi
-        )
+    rand_trans = np.zeros(3)
+    rand_trans[0] = r * np.sin(phi) * np.cos(theta) + trans[0]
+    rand_trans[1] = r * np.sin(phi) * np.sin(theta) + trans[1]
+    rand_trans[2] = r * np.cos(phi) + trans[2]
+    
+    ori_euler = qt.as_euler_angles(quat)
+    
+    rand_quat = qt.from_euler_angles(
+        ori_euler + np.array([np.pi * 0.1 * (random.random() - 0.5), 
+                              np.pi * 0.1 * (random.random() - 0.5), 
+                              np.pi * 0.1 * (random.random() - 0.5)])
+    )
 
-        render_cube_map(num_path, (rand_trans, rand_quat))
+    render_cube_map(path, (rand_trans, rand_quat))
         
-    for num in range(inner_size, inner_size + outer_size):
-        num_path = os.path.join(path, str(num))
-        if not os.path.exists(num_path):
-            os.makedirs(num_path)
-        
-        theta = 2 * np.pi * random.random()
-        phi = np.arccos(2 * random.random() - 1)
-        r = rig_size * (1 + 0.5 * random.random())
-
-        rand_trans = np.zeros(3)
-        rand_trans[0] = r * np.sin(phi) * np.cos(theta) + trans[0]
-        rand_trans[1] = r * np.sin(phi) * np.sin(theta) + trans[1]
-        rand_trans[2] = r * np.cos(phi) + trans[2]
-        
-        rand_quat = qt.from_euler_angles(
-            random.random() * 2 * np.pi, random.random() * 2 *  np.pi, random.random() * 2 *  np.pi
-        )
-
-        render_cube_map(num_path, (rand_trans, rand_quat))
-
 fisheye_poses = [np.array([[1,0,0,0],[0,1,0,0],[0,0,1,-rig_size],[0,0,0,1]]), 
                  np.array([[0,0,-1,rig_size],[0,1,0,0,],[1,0,0,0],[0,0,0,1]]), 
                  np.array([[-1,0,0,0],[0,1,0,0],[0,0,-1,rig_size],[0,0,0,1]]), 
@@ -225,7 +201,7 @@ def render_fisheye(index, pose):
 
 if __name__ == "__main__":
     data_path = "/home/star/Dataset/Replica/replica"
-    output_dir = "/home/star/Dataset/Replica/replica_generated_msp"
+    output_dir = "/home/star/Dataset/Replica/replica_generated_msp_simplified"
     
     FORWARD_KEY = 'w'
     LEFT_KEY="a"
@@ -234,7 +210,7 @@ if __name__ == "__main__":
     UP_KEY="u"
     DOWN_KEY="i"
 
-    FINISH="f"
+    SHOT="f"
     parser = argparse.ArgumentParser()
     parser.add_argument("--scene", type=str, default="room_0")
 
@@ -257,7 +233,7 @@ if __name__ == "__main__":
     cfg = make_cfg(settings)
     simulator = habitat_sim.Simulator(cfg)
 
-    print(simulator._sensors['color_sensor']._sensor_object.hfov)
+    print(f"Horizontal FoV is: {simulator._sensors['color_sensor']._sensor_object.hfov}")
     agent = simulator.get_agent(0)
     observations = simulator.get_sensor_observations()
     cv2.imshow("rgb", cv2.cvtColor(observations["color_sensor"], cv2.COLOR_BGR2RGB))
@@ -270,6 +246,8 @@ if __name__ == "__main__":
     os.makedirs(fisheye_path, exist_ok=True)
 
     index = 0
+    shot_flag = False
+    eqr_num = 5
     agent_pose = []
     while True:
         key = cv2.waitKey(0)
@@ -303,6 +281,8 @@ if __name__ == "__main__":
         elif key == 83:
             observations = simulator.step("turn_right")
             print("turn right")
+        elif key == ord(SHOT):
+            shot_flag = True
         elif key == 27:
             break
         else:
@@ -311,14 +291,17 @@ if __name__ == "__main__":
         rgb = observations["color_sensor"]
         rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
         cv2.imshow("rgb", rgb)
-
-        agent_state = agent.get_state()
-        sensor_state = agent_state.sensor_states["color_sensor"]
-        agent_pose.append((sensor_state.position, sensor_state.rotation))
-        index += 1
-
-        print("Position is {}, rotation is {}".format(sensor_state.position, sensor_state.rotation))
-        print("This is No.{} image captured".format(index))
+        
+        if shot_flag:
+            shot_flag = False
+            index += 1
+            agent_state = agent.get_state()
+            sensor_state = agent_state.sensor_states["color_sensor"]
+            print("Position is {}, rotation is {}".format(sensor_state.position, sensor_state.rotation))
+            print("This is No.{} image captured".format(index))
+            
+            for i in range(eqr_num):
+                agent_pose.append((sensor_state.position, sensor_state.rotation))
             
     for num, pose in enumerate(tqdm(agent_pose)):
         render_target_eqr(num, pose)
